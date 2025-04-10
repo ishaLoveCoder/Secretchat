@@ -1,0 +1,55 @@
+// SecretAnonTalk: Frontend for anonymous chat import { useEffect, useState } from 'react'; import { supabase } from './supabaseClient'; import { v4 as uuidv4 } from 'uuid'; import { Input } from '@/components/ui/input'; import { Button } from '@/components/ui/button'; import { Card, CardContent } from '@/components/ui/card';
+
+export default function SecretAnonTalk() { const [myId, setMyId] = useState(''); const [targetId, setTargetId] = useState(''); const [message, setMessage] = useState(''); const [messages, setMessages] = useState([]);
+
+useEffect(() => { let uid = localStorage.getItem('anon_uid'); if (!uid) { uid = uuidv4(); localStorage.setItem('anon_uid', uid); } setMyId(uid);
+
+const channel = supabase
+  .channel('anon-chat')
+  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+    const msg = payload.new;
+    if ((msg.from === myId && msg.to === targetId) || (msg.from === targetId && msg.to === myId)) {
+      setMessages((prev) => [...prev, msg]);
+    }
+  })
+  .subscribe();
+
+const fetchMsgs = async () => {
+  const { data } = await supabase.from('messages').select('*').or(`from.eq.${myId},to.eq.${myId}`);
+  setMessages(data.filter(msg => (msg.from === targetId || msg.to === targetId)));
+};
+fetchMsgs();
+
+return () => {
+  supabase.removeChannel(channel);
+};
+
+}, [targetId]);
+
+const sendMessage = async () => { if (!message.trim()) return; await supabase.from('messages').insert({ from: myId, to: targetId, text: message }); setMessage(''); };
+
+return ( <div className="p-4 max-w-xl mx-auto"> <h1 className="text-xl font-bold mb-4">Secret Anon Talk</h1> <Card className="mb-2"> <CardContent className="p-2 text-sm"> Your ID: <code>{myId}</code> </CardContent> </Card>
+
+<Input
+    placeholder="Enter friend’s ID to chat..."
+    value={targetId}
+    onChange={(e) => setTargetId(e.target.value)}
+    className="mb-2"
+  />
+
+  <div className="border rounded h-64 p-2 overflow-y-scroll bg-black text-white text-sm mb-2">
+    {messages.map((msg, idx) => (
+      <div key={idx} className={msg.from === myId ? 'text-right text-green-400' : 'text-left text-blue-400'}>
+        {msg.text}
+      </div>
+    ))}
+  </div>
+
+  <div className="flex gap-2">
+    <Input value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Type message..." />
+    <Button onClick={sendMessage}>Send</Button>
+  </div>
+</div>
+
+); }
+
