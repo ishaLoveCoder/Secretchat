@@ -1,55 +1,121 @@
-// SecretAnonTalk: Frontend for anonymous chat import { useEffect, useState } from 'react'; import { supabase } from './supabaseClient'; import { v4 as uuidv4 } from 'uuid'; import { Input } from '@/components/ui/input'; import { Button } from '@/components/ui/button'; import { Card, CardContent } from '@/components/ui/card';
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SecretAnonTalk</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #0f0f0f;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }.card {
+  background-color: #1a1a1a;
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+  width: 90%;
+  max-width: 400px;
+}
 
-export default function SecretAnonTalk() { const [myId, setMyId] = useState(''); const [targetId, setTargetId] = useState(''); const [message, setMessage] = useState(''); const [messages, setMessages] = useState([]);
+h2 {
+  margin-bottom: 20px;
+  text-align: center;
+}
 
-useEffect(() => { let uid = localStorage.getItem('anon_uid'); if (!uid) { uid = uuidv4(); localStorage.setItem('anon_uid', uid); } setMyId(uid);
+input, button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 10px;
+  border: none;
+  font-size: 16px;
+}
 
-const channel = supabase
-  .channel('anon-chat')
-  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-    const msg = payload.new;
-    if ((msg.from === myId && msg.to === targetId) || (msg.from === targetId && msg.to === myId)) {
-      setMessages((prev) => [...prev, msg]);
+input {
+  background-color: #2a2a2a;
+  color: #fff;
+}
+
+button {
+  background-color: #007bff;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+.logo {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  margin: 10px auto;
+}
+
+.chat-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+  color: #bbb;
+}
+
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>SecretAnonTalk</h2>
+    <div class="logo" id="user-logo" style="background-image: url('https://i.imgur.com/your_default_logo.png');"></div>
+    <input type="text" id="uniqueId" placeholder="Enter your unique ID" />
+    <input type="file" id="uploadLogo" accept="image/*">
+    <button onclick="registerUser()">Register / Set ID</button>
+    <hr>
+    <input type="text" id="chatWith" placeholder="Enter other's unique ID to chat" />
+    <button onclick="startChat()">Start Chat</button>
+    <div class="chat-link" id="chatLink"></div>
+  </div>  <script>
+    const database = {} // simulate a backend DB, replace with Supabase or Firebase in production
+
+    function registerUser() {
+      const id = document.getElementById("uniqueId").value.trim();
+      if (!id) return alert("Please enter an ID");
+
+      if (database[id]) {
+        alert("This ID is already used. Try a different one.");
+        return;
+      }
+
+      database[id] = { logo: document.getElementById("user-logo").style.backgroundImage };
+      localStorage.setItem("myID", id);
+      alert("ID set successfully!");
     }
-  })
-  .subscribe();
 
-const fetchMsgs = async () => {
-  const { data } = await supabase.from('messages').select('*').or(`from.eq.${myId},to.eq.${myId}`);
-  setMessages(data.filter(msg => (msg.from === targetId || msg.to === targetId)));
-};
-fetchMsgs();
+    function startChat() {
+      const myID = localStorage.getItem("myID");
+      const toID = document.getElementById("chatWith").value.trim();
+      if (!myID || !toID || myID === toID) return alert("Invalid ID");
+      if (!database[toID]) return alert("User not found");
 
-return () => {
-  supabase.removeChannel(channel);
-};
+      const chatURL = `${location.origin}/chat.html?from=${myID}&to=${toID}`;
+      document.getElementById("chatLink").innerHTML = `<a href='${chatURL}' target='_blank'>Open Chat</a>`;
+    }
 
-}, [targetId]);
-
-const sendMessage = async () => { if (!message.trim()) return; await supabase.from('messages').insert({ from: myId, to: targetId, text: message }); setMessage(''); };
-
-return ( <div className="p-4 max-w-xl mx-auto"> <h1 className="text-xl font-bold mb-4">Secret Anon Talk</h1> <Card className="mb-2"> <CardContent className="p-2 text-sm"> Your ID: <code>{myId}</code> </CardContent> </Card>
-
-<Input
-    placeholder="Enter friend’s ID to chat..."
-    value={targetId}
-    onChange={(e) => setTargetId(e.target.value)}
-    className="mb-2"
-  />
-
-  <div className="border rounded h-64 p-2 overflow-y-scroll bg-black text-white text-sm mb-2">
-    {messages.map((msg, idx) => (
-      <div key={idx} className={msg.from === myId ? 'text-right text-green-400' : 'text-left text-blue-400'}>
-        {msg.text}
-      </div>
-    ))}
-  </div>
-
-  <div className="flex gap-2">
-    <Input value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Type message..." />
-    <Button onClick={sendMessage}>Send</Button>
-  </div>
-</div>
-
-); }
-
+    document.getElementById("uploadLogo").addEventListener("change", function () {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        document.getElementById("user-logo").style.backgroundImage = `url('${e.target.result}')`;
+      };
+      reader.readAsDataURL(this.files[0]);
+    });
+  </script></body>
+</html>
