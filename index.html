@@ -3,119 +3,146 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SecretAnonTalk</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
   <style>
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background-color: #0f0f0f;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #121212;
       color: #fff;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       height: 100vh;
-    }.card {
-  background-color: #1a1a1a;
-  border-radius: 20px;
-  padding: 30px;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
-  width: 90%;
-  max-width: 400px;
+    }.header {
+  font-size: 24px;
+  font-weight: bold;
+  padding: 1rem;
+  color: #00f5d4;
 }
 
-h2 {
-  margin-bottom: 20px;
-  text-align: center;
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 500px;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.chat-box, .msg-box, .id-box {
+  background-color: #1e1e1e;
+  padding: 1rem;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.1);
+}
+
+.chat-box {
+  height: 300px;
+  overflow-y: auto;
+}
+
+.input-group {
+  display: flex;
+  gap: 0.5rem;
 }
 
 input, button {
-  width: 100%;
-  padding: 12px;
-  margin-top: 10px;
-  border-radius: 10px;
+  padding: 0.5rem;
   border: none;
-  font-size: 16px;
+  border-radius: 5px;
+  outline: none;
 }
 
 input {
-  background-color: #2a2a2a;
+  flex-grow: 1;
+  background: #2a2a2a;
   color: #fff;
 }
 
 button {
-  background-color: #007bff;
-  color: #fff;
+  background-color: #00f5d4;
+  color: #000;
+  font-weight: bold;
   cursor: pointer;
-  transition: background-color 0.2s;
 }
 
-button:hover {
-  background-color: #0056b3;
-}
-
-.logo {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background-size: cover;
-  background-position: center;
-  margin: 10px auto;
-}
-
-.chat-link {
-  text-align: center;
-  margin-top: 20px;
-  font-size: 14px;
-  color: #bbb;
+.message {
+  margin: 0.3rem 0;
+  padding: 0.5rem;
+  background: #333;
+  border-radius: 8px;
 }
 
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2>SecretAnonTalk</h2>
-    <div class="logo" id="user-logo" style="background-image: url('https://i.imgur.com/your_default_logo.png');"></div>
-    <input type="text" id="uniqueId" placeholder="Enter your unique ID" />
-    <input type="file" id="uploadLogo" accept="image/*">
-    <button onclick="registerUser()">Register / Set ID</button>
-    <hr>
-    <input type="text" id="chatWith" placeholder="Enter other's unique ID to chat" />
-    <button onclick="startChat()">Start Chat</button>
-    <div class="chat-link" id="chatLink"></div>
+  <div class="header">SecretAnonTalk</div>  <div class="container">
+    <div class="id-box">
+      <div style="margin-bottom: 0.5rem;">Your Unique ID (auto-generated):</div>
+      <input id="myId" readonly />
+      <div style="margin: 0.5rem 0;">Or register your own Unique ID:</div>
+      <div class="input-group">
+        <input id="customId" placeholder="Enter custom ID" />
+        <button onclick="registerId()">Register</button>
+      </div>
+    </div><div class="msg-box">
+  <div>Chat with Unique ID:</div>
+  <div class="input-group">
+    <input id="chatWithId" placeholder="Enter ID to chat with" />
+    <button onclick="sendRequest()">Send Request</button>
+  </div>
+</div>
+
+<div class="chat-box" id="chat"></div>
+
+<div class="input-group">
+  <input id="msgInput" placeholder="Type a message..." />
+  <button onclick="sendMessage()">Send</button>
+</div>
+
   </div>  <script>
-    const database = {} // simulate a backend DB, replace with Supabase or Firebase in production
+    let myId = localStorage.getItem('myId') || generateId();
+    document.getElementById('myId').value = myId;
+    localStorage.setItem('myId', myId);
 
-    function registerUser() {
-      const id = document.getElementById("uniqueId").value.trim();
-      if (!id) return alert("Please enter an ID");
-
-      if (database[id]) {
-        alert("This ID is already used. Try a different one.");
-        return;
-      }
-
-      database[id] = { logo: document.getElementById("user-logo").style.backgroundImage };
-      localStorage.setItem("myID", id);
-      alert("ID set successfully!");
+    function generateId() {
+      return 'user-' + Math.random().toString(36).substring(2, 10);
     }
 
-    function startChat() {
-      const myID = localStorage.getItem("myID");
-      const toID = document.getElementById("chatWith").value.trim();
-      if (!myID || !toID || myID === toID) return alert("Invalid ID");
-      if (!database[toID]) return alert("User not found");
+    function registerId() {
+      const customId = document.getElementById('customId').value.trim();
+      if (!customId) return alert("Please enter a valid ID");
 
-      const chatURL = `${location.origin}/chat.html?from=${myID}&to=${toID}`;
-      document.getElementById("chatLink").innerHTML = `<a href='${chatURL}' target='_blank'>Open Chat</a>`;
+      // Check ID already exists logic with MongoDB will go here later
+      // Simulating conflict for now:
+      if (customId === "takenId") return alert("ID already used");
+
+      myId = customId;
+      localStorage.setItem('myId', customId);
+      document.getElementById('myId').value = customId;
+      alert("ID Registered: " + customId);
     }
 
-    document.getElementById("uploadLogo").addEventListener("change", function () {
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        document.getElementById("user-logo").style.backgroundImage = `url('${e.target.result}')`;
-      };
-      reader.readAsDataURL(this.files[0]);
-    });
+    function sendRequest() {
+      const id = document.getElementById('chatWithId').value.trim();
+      if (!id) return alert("Enter recipient's ID");
+      alert(`Request sent to ${id}. Waiting for approval...`);
+
+      // Future: send real connection request
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('msgInput');
+      const chat = document.getElementById('chat');
+      const msg = input.value.trim();
+      if (!msg) return;
+      const div = document.createElement('div');
+      div.className = 'message';
+      div.innerText = `${myId}: ${msg}`;
+      chat.appendChild(div);
+      input.value = '';
+    }
   </script></body>
 </html>
